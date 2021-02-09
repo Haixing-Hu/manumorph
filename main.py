@@ -5,7 +5,7 @@ from tensorflow.keras.applications.vgg16 import VGG16
 from tensorflow.keras import backend as K
 from PIL import Image
 from scipy.optimize import fmin_l_bfgs_b
-from scipy.misc import imsave
+from imageio import imwrite
 
 
 CONTENT_WEIGHT = 1000
@@ -23,7 +23,7 @@ def load_image(path):
 def save_image(output, name):
     image = np.reshape(output, (output.shape[1], output.shape[2], output.shape[3]))
     image = np.clip(image, 0, 255).astype('uint8')
-    imsave(name, image)
+    imwrite(name, image)
 
 
 def gram_matrix(x):
@@ -61,7 +61,7 @@ def dilate_mask(mask):
 
 def first_pass(content_image, style_image, mask_image, dilated_mask):
 
-    
+
     config = {"layer_content": "block2_conv2",
 		"layers_style": ["block1_conv2","block2_conv2","block3_conv3",
         "block4_conv3","block5_conv3"]}
@@ -73,7 +73,7 @@ def first_pass(content_image, style_image, mask_image, dilated_mask):
     mask_smth = np.reshape(mask_image, (mask_image.shape[1], mask_image.shape[2], mask_image.shape[3]))
     mask_smth = cv2.GaussianBlur(mask_smth, (3,3) , 1)
     mask_smth = np.reshape(mask_smth, (1, mask_smth.shape[0], mask_smth.shape[1], mask_smth.shape[2]))
-    
+
     model = VGG16(input_tensor=input_tensor, include_top=False, weights="imagenet")
 
     layers = dict([(layer.name, layer.output) for layer in model.layers])
@@ -108,7 +108,7 @@ def first_pass(content_image, style_image, mask_image, dilated_mask):
     return output
 
 def second_pass(content_image, style_image, mask_image, dilated_mask, output_from_first_pass):
-    
+
     config = {"layer_content": "block2_conv2",
 		"layers_style": ["block1_conv2","block2_conv2","block3_conv3",
         "block4_conv3","block5_conv3"]}
@@ -120,7 +120,7 @@ def second_pass(content_image, style_image, mask_image, dilated_mask, output_fro
     mask_smth = np.reshape(mask_image, (mask_image.shape[1], mask_image.shape[2], mask_image.shape[3]))
     mask_smth = cv2.GaussianBlur(mask_smth, (3,3) , 1)
     mask_smth = np.reshape(mask_smth, (1, mask_smth.shape[0], mask_smth.shape[1], mask_smth.shape[2]))
-    
+
     model = VGG16(input_tensor=input_tensor, include_top=False, weights="imagenet")
 
     layers = dict([(layer.name, layer.output) for layer in model.layers])
