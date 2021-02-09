@@ -1,10 +1,10 @@
 import tensorflow as tf
 import numpy as np
 import cv2
-from tensorflow.keras.applications.vgg16 import VGG16
-from tensorflow.keras import backend as K
-from PIL import Image
+from tensorflow.keras.applications import VGG16
+from tensorflow.compat.v1.keras import backend
 from scipy.optimize import fmin_l_bfgs_b
+from imageio import imread
 from imageio import imwrite
 
 
@@ -12,9 +12,8 @@ CONTENT_WEIGHT = 1000
 STYLE_WEIGHT = [0.1, 0.1, 0.1, 0.1, 0.1]
 TV_WEIGHT = 0.5
 
-
 def load_image(path):
-    image = Image.open(path)
+    image = imread(path)
     image = np.asarray(image, dtype="float32")
     image = np.reshape(image, (1, image.shape[0], image.shape[1], image.shape[2]))
     return image
@@ -27,7 +26,7 @@ def save_image(output, name):
 
 
 def gram_matrix(x):
-    features = tf.keras.backend.batch_flatten(tf.transpose(x, perm=[2,0,1]))
+    features = backend.batch_flatten(tf.transpose(x, perm=[2,0,1]))
     gram = tf.matmul(features, tf.transpose(features))
     return gram
 
@@ -66,15 +65,17 @@ def first_pass(content_image, style_image, mask_image, dilated_mask):
 		"layers_style": ["block1_conv2","block2_conv2","block3_conv3",
         "block4_conv3","block5_conv3"]}
 
-    sess = K.get_session()
-    combination_im = tf.Variable(tf.random_uniform((1, content_image.shape[1],  content_image.shape[2],  content_image.shape[3])))
+    sess = backend.get_session()
+    combination_im = tf.Variable(tf.random.uniform((1, content_image.shape[1],  content_image.shape[2],  content_image.shape[3])))
     input_tensor = tf.concat([content_image, style_image, combination_im, mask_image], 0)
+    # input_tensor = tf.keras.Input(tensor=tf.Tensor(input_tensor.numpy()))
+    print(type(input_tensor))
 
     mask_smth = np.reshape(mask_image, (mask_image.shape[1], mask_image.shape[2], mask_image.shape[3]))
     mask_smth = cv2.GaussianBlur(mask_smth, (3,3) , 1)
     mask_smth = np.reshape(mask_smth, (1, mask_smth.shape[0], mask_smth.shape[1], mask_smth.shape[2]))
 
-    model = VGG16(input_tensor=input_tensor, include_top=False, weights="imagenet")
+    model = VGG16(input_tensor=tf.convert_to_tensor(input_tensor), include_top=False, weights="imagenet")
 
     layers = dict([(layer.name, layer.output) for layer in model.layers])
 
@@ -113,15 +114,16 @@ def second_pass(content_image, style_image, mask_image, dilated_mask, output_fro
 		"layers_style": ["block1_conv2","block2_conv2","block3_conv3",
         "block4_conv3","block5_conv3"]}
 
-    sess = K.get_session()
+    sess = backend.get_session()
     combination_im = tf.Variable(output_from_first_pass)
     input_tensor = tf.concat([content_image, style_image, combination_im, mask_image], 0)
+    print(type(input_tensor))
 
     mask_smth = np.reshape(mask_image, (mask_image.shape[1], mask_image.shape[2], mask_image.shape[3]))
     mask_smth = cv2.GaussianBlur(mask_smth, (3,3) , 1)
     mask_smth = np.reshape(mask_smth, (1, mask_smth.shape[0], mask_smth.shape[1], mask_smth.shape[2]))
 
-    model = VGG16(input_tensor=input_tensor, include_top=False, weights="imagenet")
+    model = VGG16(input_tensor=tf.convert_to_tensor(input_tensor), include_top=False, weights="imagenet")
 
     layers = dict([(layer.name, layer.output) for layer in model.layers])
 
